@@ -89,14 +89,14 @@ func (r *Route) Process(nWorkers int) *Route {
 	return r
 }
 
-func (r *Route) To(to string) *Route {
+func (r *Route) To(dst string) *Route {
 	n := &Node{rt: r}
 	n.NodeState.typ = to
 	n.input = make(chan Exchange)
 	r.addNode(n)
 
 	n.runner = func() {
-		rr := r.rc.lookupRoute(to)
+		rr := r.rc.lookupRoute(dst)
 		fmt.Println("To >", rr, (*rr)[0], (*rr)[0].input)
 
 		for {
