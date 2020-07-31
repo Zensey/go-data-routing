@@ -5,5 +5,26 @@ type Job interface {
 }
 
 type Worker interface {
-	SubmitJob(j Exchange)
+	SubmitJob(Exchange)
+}
+
+type Pool interface {
+	FuncOnJobResult(Exchange)
+	Quit() chan bool
+	IdleWorkers() chan Worker
+	WorkerDone()
+}
+
+type IRouterContext interface {
+	Route(name string) *Route
+}
+
+// Route builder
+type IRoute interface {
+	Source(f func(n *Node)) *Route
+	Filter(f func(e Exchange, n *Node)) *Route
+	Process(nWorkers int) *Route
+	To(dst string) *Route
+	WireTap(dst string) *Route
+	Sink(f func(e Exchange) error) *Route
 }

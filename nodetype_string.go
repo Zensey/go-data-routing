@@ -10,19 +10,16 @@ func _() {
 	var x [1]struct{}
 	_ = x[source-1]
 	_ = x[sink-2]
-	_ = x[splitter-3]
+	_ = x[filter-3]
 	_ = x[processor-4]
 	_ = x[to-5]
-	_ = x[consumer-6]
-	_ = x[filter-7]
-	_ = x[aggregator-8]
-	_ = x[mapper-9]
-	_ = x[enricher-10]
+	_ = x[wiretap-6]
+	_ = x[consumer-7]
 }
 
-const _nodeType_name = "sourcesinksplitterprocessortoconsumerfilteraggregatormapperenricher"
+const _nodeType_name = "sourcesinkfilterprocessortowiretapconsumer"
 
-var _nodeType_index = [...]uint8{0, 6, 10, 18, 27, 29, 37, 43, 53, 59, 67}
+var _nodeType_index = [...]uint8{0, 6, 10, 16, 25, 27, 34, 42}
 
 func (i nodeType) String() string {
 	i -= 1

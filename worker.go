@@ -1,11 +1,11 @@
 package go_data_routing
 
 type worker struct {
-	pool    *BasicPool
+	pool    Pool
 	jobChan chan Exchange
 }
 
-func newWorker(p *BasicPool) *worker {
+func newWorker(p Pool) *worker {
 	return &worker{
 		pool:    p,
 		jobChan: make(chan Exchange),
@@ -18,13 +18,13 @@ func (w *worker) SubmitJob(j Exchange) {
 }
 
 // Used by pool to spawn a worker
-func (w *worker) run(id int) {
+func (w *worker) run() {
 	for {
 		select {
-		case w.pool.idleWorkers <- w:
+		case w.pool.IdleWorkers() <- w:
 
-		case <-w.pool.quit:
-			w.pool.wg.Done()
+		case <-w.pool.Quit():
+			w.pool.WorkerDone()
 			return
 		}
 
@@ -33,8 +33,8 @@ func (w *worker) run(id int) {
 			job.Msg.Run()
 			w.pool.FuncOnJobResult(job)
 
-		case <-w.pool.quit:
-			w.pool.wg.Done()
+		case <-w.pool.Quit():
+			w.pool.WorkerDone()
 			return
 		}
 	}

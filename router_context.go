@@ -8,47 +8,44 @@ import (
 )
 
 type RouterContext struct {
-	wg  sync.WaitGroup
-	ctx context.Context
-
-	r map[string]*Nodes
+	routesWg    sync.WaitGroup
+	ctx         context.Context
+	routes      map[string]*Nodes
+	routesOrder []string
 }
 
 func NewRouterContext(ctx context.Context) *RouterContext {
-	r := &RouterContext{
-		ctx: ctx,
-		r:   make(map[string]*Nodes),
+	c := &RouterContext{
+		ctx:    ctx,
+		routes: make(map[string]*Nodes),
 	}
-	return r
+	return c
 }
 
-func (rc *RouterContext) Route(name string) *Route {
-	rb := NewRouteBuilder(rc)
-	rc.r[name] = &rb.rt
+func (c *RouterContext) Route(name string) *Route {
+	c.routesWg.Add(1)
+	rb := NewRouteBuilder(c)
+	c.routes[name] = &rb.rt
+	c.routesOrder = append(c.routesOrder, name)
+
 	return rb
 }
 
-func (r *RouterContext) lookupRoute(s string) *Nodes {
-	return r.r[s]
+func (c *RouterContext) lookupRoute(s string) *Nodes {
+	return c.routes[s]
 }
 
-func (r *RouterContext) Run() {
-	nr := 1 // number of routes
-	r.wg.Add(nr)
+func (c *RouterContext) Run() {
+	fmt.Println("Routes Run > ")
 
-	// link channels
-	for _, rt := range r.r {
+	// link nodes by channels
+	for _, rt := range c.routes {
 		prev := (*Node)(nil)
 		for i, n := range *rt {
 			if prev != nil {
-				prev.output = n.input
+				prev.Output = n.Input
 			}
 			prev = n
-			if n.typ == to {
-				//n.output_ = r.rt2[0].input
-				//r.rt2[len(r.rt2)-1].output = n.input_
-			}
-
 			if i == len(*rt)-1 {
 				n.isLast = true
 			}
@@ -56,40 +53,65 @@ func (r *RouterContext) Run() {
 	}
 
 	// launch runners
-	for _, rt := range r.r {
+	for _, rt := range c.routes {
 		for _, n := range *rt {
-			go n.runner()
+			go func(n *Node) {
+				n.runner()
+				c.onRunnerStop(n)
+			}(n)
 		}
 	}
 
-	quit := make(chan struct{})
 	go func() {
+		c.Print()
 		for {
 			select {
-			case <-quit:
+			case <-c.ctx.Done():
+				for _, rn := range c.routesOrder {
+					r := c.routes[rn]
+					r.getFirstNode().Input <- Exchange{Type: Stop}
+				}
 				return
-			case <-time.After(2 * time.Second):
-				//r.Print()
-				//case n:= <-r.nodeStop:
+
+			case <-time.After(1 * time.Second):
+				c.Print()
 			}
 		}
 	}()
 
-	r.wg.Wait()
-	close(quit)
+	c.routesWg.Wait() // wait for all routes
 }
 
 func (c *RouterContext) Print() {
-	//fmt.Print("\033[H\033[2J")
+	fmt.Print("\033[H\033[2J") // clear screen
 
-	for i, rt := range c.r {
-		fmt.Printf("Route: %s   in     stoped\n", i)
-		for _, n_ := range *rt {
+	for _, rn := range c.routesOrder {
+		r := c.routes[rn]
+
+		fmt.Printf("Route: %s\n", rn)
+		fmt.Println("type          in     Stop err")
+		for _, n_ := range *r {
 			n_.Lock()
 			n := n_.NodeState
 			n_.Unlock()
 
-			fmt.Printf("└%-12s %-6d %v %v\n", n.typ.String(), n.in, n.stopped, n.err)
+			fmt.Printf("└%-12s %-6d %v    %v\n", n_.typ.String(), n.in, boolToYN(n.stopped), n.err)
 		}
 	}
+}
+
+func (c *RouterContext) onRunnerStop(n *Node) {
+	n.onStop()
+	if !n.isLast {
+		n.Send(Exchange{Type: Stop})
+		return
+	}
+	c.routesWg.Done()
+}
+
+func boolToYN(b bool) string {
+	if b {
+		return "Y"
+	}
+	return "N"
 }

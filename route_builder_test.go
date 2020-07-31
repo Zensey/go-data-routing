@@ -1,43 +1,49 @@
 package go_data_routing
 
 import (
-	"fmt"
+	"context"
 	"testing"
 	"time"
-
-	"github.com/Zensey/crawler/pkg/jobs"
-	"github.com/Zensey/crawler/pkg/util"
 )
 
-func Test_Enrich(t *testing.T) {
+type Probe struct {
+	X string
+}
 
-	ctx, _ := util.ShutdownCtx()
+func (r *Probe) Run() {}
+
+func Test_Enrich(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
 	rc := NewRouterContext(ctx)
 
 	rc.Route("main").
-		Source(func(send func(Exchange)) {
+		Source(func(n *Node) {
 			for {
 				select {
-				case <-ctx.Done():
-					return
+				case i, _ := <-n.Input:
+					if i.Type == Stop {
+						return
+					}
 
 				case <-time.After(1 * time.Second):
-					fmt.Println("source tick>")
-					send(Exchange{Msg: &jobs.Probe{
-						"a",
-					}})
+					n.Send(Exchange{Msg: &Probe{"a"}})
 				}
 			}
 		}).
 		To("enrich-rt").
 		Sink(func(j_ Exchange) error {
-			fmt.Printf("Sink >> %+v \n", j_)
+			//fmt.Printf("Sink >> %+v \n", j_)
 			return nil
 		})
 
 	rc.Route("enrich-rt").
 		Process(1)
 
+	go func() {
+		time.Sleep(2 * time.Second)
+		cancel()
+		rc.Print()
+	}()
 	rc.Run()
-
+	rc.Print()
 }

@@ -1,6 +1,8 @@
 package go_data_routing
 
-import "sync"
+import (
+	"sync"
+)
 
 type nodeType int
 
@@ -8,15 +10,14 @@ type nodeType int
 const (
 	source nodeType = iota + 1
 	sink
-	splitter
+	filter
 	processor
 	to
+	wiretap
 	consumer
 
-	filter
-	aggregator
-	mapper
-	enricher
+	//aggregator
+	//enricher
 )
 
 /*
@@ -33,14 +34,14 @@ const (
 
     Concerns / limitations:
 	- each given node is connected with the next (if one exists) only with 1 channel
-	- node owns input channel
-	- output is a reference to consumer's input
-	- node closes output channel
-	- any given node especially "processor" should know if its output is consumed. unconsumed channel blocks the producer
+	- node owns Input channel
+	- Output is a reference to consumer's Input
+	- node does not close Output channel. Instead it sends msg type=close
+	- any given node especially "processor" should know if its Output is consumed. unconsumed channel blocks the producer
 
 
 	rt("bbb").process()
-	rt("aaa").gen().enrich("bbb").split().sink()
+	rt("aaa").source().to("bbb").split().sink()
 
 
 	TODO
@@ -48,26 +49,35 @@ const (
 
 */
 
+type exchangeType int
+
+const (
+	Request exchangeType = iota + 1
+	RequestReply
+	Stop
+)
+
 type Exchange struct {
-	ReqReply  bool
-	CorrID    string
+	Type      exchangeType
 	Initiator *Node
-	Msg       Job // both input & result
+	//CorrID    string
+
+	Header interface{}
+	Msg    Job // both Input & result
 }
 
 type NodeState struct {
 	stopped bool
-	typ     nodeType
 	in      int
 	isLast  bool
 	err     error // error of runner
 }
 
 type Node struct {
-	rt *Route
+	typ nodeType
 
-	input  chan Exchange
-	output chan Exchange
+	Input  chan Exchange
+	Output chan Exchange
 
 	sync.Mutex
 	NodeState
@@ -75,10 +85,42 @@ type Node struct {
 	runner func()
 }
 
+func newNode(t nodeType) *Node {
+	n := &Node{typ: t}
+
+	if t != processor {
+		n.Input = make(chan Exchange)
+	}
+	return n
+}
+
 func (n *Node) onStop() {
 	n.Lock()
 	n.stopped = true
 	n.Unlock()
+}
 
-	n.rt.onRunnerStop(n)
+func (n *Node) incrIn() {
+	n.Lock()
+	n.in++
+	n.Unlock()
+}
+
+func (n *Node) setErr(e error) {
+	n.Lock()
+	n.err = e
+	n.Unlock()
+}
+
+func (n *Node) Send(e Exchange) {
+	//fmt.Printf("Send> %v %+v\n", n.isLast, e)
+
+	if n.isLast {
+		// return reply to the initiator of Request-Reply
+		if e.Type == RequestReply && e.Initiator != nil {
+			e.Initiator.Input <- e
+		}
+		return
+	}
+	n.Output <- e
 }

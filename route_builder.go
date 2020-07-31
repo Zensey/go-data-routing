@@ -1,10 +1,10 @@
 package go_data_routing
 
-import (
-	"fmt"
-)
-
 type Nodes []*Node
+
+func (n *Nodes) getFirstNode() *Node {
+	return (*n)[0]
+}
 
 type Route struct {
 	rc *RouterContext
@@ -23,162 +23,159 @@ func (r *Route) addNode(n *Node) {
 	r.rt = append(r.rt, n)
 }
 
-func (r *Route) Source(f func(send func(Exchange))) *Route {
-	n := &Node{rt: r}
-	n.NodeState.typ = source
-	r.addNode(n)
+func (r *Route) isFirstNode(n *Node) bool {
+	return r.rt[0] == n
+}
 
+func (r *Route) Source(f func(n *Node)) *Route {
+	n := newNode(source)
 	n.runner = func() {
-		var sendFn = func(j Exchange) {
-			n.output <- j
-		}
-
-		f(sendFn)
-		n.onStop()
-		close(n.output)
+		f(n)
 	}
+	r.addNode(n)
 	return r
 }
 
-func (r *Route) Filter(f func(j Exchange, sendFn func(Exchange))) *Route {
-	n := &Node{rt: r}
-	n.NodeState.typ = splitter
-	n.input = make(chan Exchange)
-	r.addNode(n)
-
+func (r *Route) Filter(f func(j Exchange, n *Node)) *Route {
+	n := newNode(filter)
 	n.runner = func() {
-		var sendFn = func(j Exchange) {
-			n.output <- j
-		}
-
 		for {
 			select {
-			case i, ok := <-n.input:
-				if !ok {
-					n.onStop()
-					close(n.output)
+			case i, _ := <-n.Input:
+				if i.Type == Stop {
 					return
 				}
-				n.Lock()
-				n.in++
-				n.Unlock()
-
-				f(i, sendFn)
+				n.incrIn()
+				f(i, n)
 			}
 		}
 	}
+	r.addNode(n)
 	return r
 }
 
 func (r *Route) Process(nWorkers int) *Route {
-	n := &Node{rt: r}
-	n.NodeState.typ = processor
-	r.addNode(n)
-
-	workerPool := NewPluggablePool(nWorkers, n)
-
-	n.input = workerPool.GetInputChan()
-	n.runner = func() {
-		//var sendFn = func(j Exchange) {
-		//	n.output <- j
-		//}
-
-		workerPool.Run()
-		n.onStop()
-	}
-	return r
-}
-
-func (r *Route) To(dst string) *Route {
-	n := &Node{rt: r}
-	n.NodeState.typ = to
-	n.input = make(chan Exchange)
-	r.addNode(n)
+	n := newNode(processor)
+	p := NewPluggablePool(nWorkers, n)
+	n.Input = p.GetInputChan()
 
 	n.runner = func() {
-		rr := r.rc.lookupRoute(dst)
-		fmt.Println("To >", rr, (*rr)[0], (*rr)[0].input)
+		p.spawnWorkers()
 
+		// exits from the cycle only when there's a spare worker and the job has been submitted to it
 		for {
+		l:
 			select {
-			case i, ok := <-n.input:
-				if !ok {
-					n.onStop()
-
-					close(n.output)
-					return
-
-				} else {
-					// detect type
-					if i.ReqReply && i.Initiator == n {
-						fmt.Println("To > Answer", i.Msg)
-
-						// pass down
-						n.output <- i
+			case w := <-p.idleWorkers:
+				select {
+				case ex, _ := <-p.input:
+					if ex.Type == Stop {
+						// Consider : using cancel ctx to term long-running requests ?
+						p.joinWorkers()
+						return
 					} else {
-						n.Lock()
-						n.in++
-						n.Unlock()
-
-						i_ := i
-						i_.ReqReply = true
-						i_.Initiator = n
-						(*rr)[0].input <- i_
+						n.incrIn()
+						w.SubmitJob(ex)
+						break l
 					}
 				}
 			}
 		}
 	}
+	r.addNode(n)
+	return r
+}
+
+func (r *Route) To(dst string) *Route {
+	n := newNode(to)
+	n.runner = func() {
+		dstRoute := r.rc.lookupRoute(dst)
+		dstNode := dstRoute.getFirstNode()
+		countTo := 0
+		isClosing := false
+
+		for {
+			select {
+			case i, _ := <-n.Input:
+				if i.Type == Stop {
+					isClosing = true
+					if countTo == 0 {
+						return
+					}
+
+				} else {
+					// detect type
+					if i.Type == RequestReply && i.Initiator == n {
+						countTo--
+						if countTo == 0 && isClosing {
+							return
+						}
+
+						// pass down
+						n.Output <- i
+					} else {
+						n.incrIn()
+
+						countTo++
+						i_ := i
+						i_.Type = RequestReply
+						i_.Initiator = n
+						dstNode.Input <- i_
+					}
+				}
+			}
+		}
+	}
+	r.addNode(n)
+	return r
+}
+
+func (r *Route) WireTap(dst string) *Route {
+	n := newNode(wiretap)
+	n.runner = func() {
+		dstRoute := r.rc.lookupRoute(dst)
+		dstNode := dstRoute.getFirstNode()
+		for {
+			select {
+			case i, _ := <-n.Input:
+				if i.Type == Stop {
+					return
+				}
+
+				n.incrIn()
+				if !dstNode.stopped { // possible data race. trace route dependencies / exchanges ?
+					dstNode.Input <- i
+				}
+				n.Output <- i
+			}
+		}
+	}
+	r.addNode(n)
 	return r
 }
 
 func (r *Route) Sink(f func(j Exchange) error) *Route {
-	n := &Node{rt: r}
-	n.NodeState.typ = sink
-	n.input = make(chan Exchange)
-	r.addNode(n)
-
+	n := newNode(sink)
 	n.runner = func() {
-		//fmt.Println("Sink >", n.isLast)
-	l:
 		for {
 			select {
-			case j, ok := <-n.input:
-				if !ok {
-					break l
+			case i, _ := <-n.Input:
+				if i.Type == Stop {
+					return
 				}
-
-				n.Lock()
-				n.in++
-				n.Unlock()
-
-				err := f(j)
-				n.Lock()
-				n.err = err
-				n.Unlock()
-
+				n.incrIn()
+				err := f(i)
+				n.setErr(err)
 				if n.err != nil {
-					break l
+					return
 				}
 
-				// return to initiator
+				if i.Type == RequestReply && i.Initiator != nil { // return to initiator
+					i.Initiator.Input <- i
+				}
 			}
 		}
-		fmt.Println("Sink > stop")
-
-		n.onStop()
 	}
+	r.addNode(n)
 	return r
-}
-
-/////// ?
-func (r *Route) onRunnerStop(n *Node) {
-	//if n.next == nil {
-	//	r.wg.Done()
-	//}
-
-	//fmt.Println("onRunnerStop >", n)
-	if n.output == nil {
-		r.rc.wg.Done()
-	}
 }
