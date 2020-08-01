@@ -87,29 +87,27 @@ type Node struct {
 
 func newNode(t nodeType) *Node {
 	n := &Node{typ: t}
+	n.Input = make(chan Exchange)
 
-	if t != processor {
-		n.Input = make(chan Exchange)
-	}
 	return n
 }
 
 func (n *Node) onStop() {
 	n.Lock()
+	defer n.Unlock()
 	n.stopped = true
-	n.Unlock()
 }
 
 func (n *Node) incrIn() {
 	n.Lock()
+	defer n.Unlock()
 	n.in++
-	n.Unlock()
 }
 
 func (n *Node) setErr(e error) {
 	n.Lock()
+	defer n.Unlock()
 	n.err = e
-	n.Unlock()
 }
 
 func (n *Node) Send(e Exchange) {

@@ -15,12 +15,13 @@ type Pool interface {
 	WorkerDone()
 }
 
-type IRouterContext interface {
+/*
+type RouterContext interface {
 	Route(name string) *Route
 }
 
 // Route builder
-type IRoute interface {
+type Route interface {
 	Source(f func(n *Node)) *Route
 	Filter(f func(e Exchange, n *Node)) *Route
 	Process(nWorkers int) *Route
@@ -28,3 +29,4 @@ type IRoute interface {
 	WireTap(dst string) *Route
 	Sink(f func(e Exchange) error) *Route
 }
+*/

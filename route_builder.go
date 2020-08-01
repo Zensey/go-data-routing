@@ -57,7 +57,7 @@ func (r *Route) Filter(f func(j Exchange, n *Node)) *Route {
 func (r *Route) Process(nWorkers int) *Route {
 	n := newNode(processor)
 	p := NewPluggablePool(nWorkers, n)
-	n.Input = p.GetInputChan()
+	p.setInputChan(n.Input)
 
 	n.runner = func() {
 		p.spawnWorkers()
@@ -112,6 +112,8 @@ func (r *Route) To(dst string) *Route {
 						}
 
 						// pass down
+						i.Type = Request
+						i.Initiator = nil
 						n.Output <- i
 					} else {
 						n.incrIn()
@@ -163,6 +165,7 @@ func (r *Route) Sink(f func(j Exchange) error) *Route {
 				if i.Type == Stop {
 					return
 				}
+
 				n.incrIn()
 				err := f(i)
 				n.setErr(err)

@@ -36,7 +36,7 @@ func (c *RouterContext) lookupRoute(s string) *Nodes {
 }
 
 func (c *RouterContext) Run() {
-	fmt.Println("Routes Run > ")
+	fmt.Println("RouterContext > Run")
 
 	// link nodes by channels
 	for _, rt := range c.routes {
@@ -67,13 +67,19 @@ func (c *RouterContext) Run() {
 		for {
 			select {
 			case <-c.ctx.Done():
+				fmt.Println("Stopping..")
 				for _, rn := range c.routesOrder {
 					r := c.routes[rn]
-					r.getFirstNode().Input <- Exchange{Type: Stop}
+
+					// non-blocking send
+					select {
+					case r.getFirstNode().Input <- Exchange{Type: Stop}:
+					default:
+					}
 				}
 				return
 
-			case <-time.After(1 * time.Second):
+			case <-time.After(2 * time.Second):
 				c.Print()
 			}
 		}
@@ -106,6 +112,7 @@ func (c *RouterContext) onRunnerStop(n *Node) {
 		n.Send(Exchange{Type: Stop})
 		return
 	}
+	// last node in a route
 	c.routesWg.Done()
 }
 

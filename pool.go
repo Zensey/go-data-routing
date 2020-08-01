@@ -1,6 +1,8 @@
 package go_data_routing
 
-import "sync"
+import (
+	"sync"
+)
 
 /*
  Logic of pool
@@ -27,9 +29,9 @@ func NewPluggablePool(nWorkers int, n *Node) *PluggablePool {
 		idleWorkers: make(chan Worker, 100),
 		wg:          sync.WaitGroup{},
 		quit:        make(chan bool),
-		input:       make(chan Exchange),
-		nWorkers:    nWorkers,
-		node:        n,
+		//input:       make(chan Exchange),
+		nWorkers: nWorkers,
+		node:     n,
 	}
 
 	return p
@@ -68,33 +70,6 @@ func (p *PluggablePool) spawnWorkers() {
 	}
 }
 
-func (p *PluggablePool) Run() {
-
-	//spawnWorkers()
-	//
-	//// exits from the cycle only when there's a spare worker and the job has been submitted to it
-	//for {
-	//l:
-	//	select {
-	//	case w := <-p.idleWorkers:
-	//
-	//		select {
-	//		case j, _ := <-p.Input:
-	//			if j.Stop {
-	//				// Consider : using cancel ctx to term long-running requests ?
-	//				p.joinWorkers()
-	//				return
-	//			} else {
-	//				p.node.incrIn()
-	//				w.SubmitJob(j)
-	//				break l
-	//			}
-	//		}
-	//
-	//	}
-	//}
-}
-
-func (p *PluggablePool) GetInputChan() chan Exchange {
-	return p.input
+func (p *PluggablePool) setInputChan(i chan Exchange) {
+	p.input = i
 }
