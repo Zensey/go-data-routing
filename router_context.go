@@ -70,11 +70,8 @@ func (c *RouterContext) Run() {
 				fmt.Println("Stopping..")
 				for _, rn := range c.routesOrder {
 					r := c.routes[rn]
-
-					// non-blocking send
-					select {
-					case r.getFirstNode().Input <- Exchange{Type: Stop}:
-					default:
+					if !r.getFirstNode().stopped {
+						r.getFirstNode().Input <- Exchange{Type: Stop}
 					}
 				}
 				return
@@ -89,7 +86,7 @@ func (c *RouterContext) Run() {
 }
 
 func (c *RouterContext) Print() {
-	fmt.Print("\033[H\033[2J") // clear screen
+	//fmt.Print("\033[H\033[2J") // clear screen
 
 	for _, rn := range c.routesOrder {
 		r := c.routes[rn]
