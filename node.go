@@ -69,12 +69,12 @@ type Exchange struct {
 type NodeState struct {
 	stopped bool
 	in      int
-	isLast  bool
 	err     error // error of runner
 }
 
 type Node struct {
-	typ nodeType
+	typ    nodeType
+	isLast bool
 
 	Input  chan Exchange
 	Output chan Exchange
@@ -96,6 +96,18 @@ func (n *Node) onStop() {
 	n.Lock()
 	defer n.Unlock()
 	n.stopped = true
+}
+
+func (n *Node) getStopped() bool {
+	n.Lock()
+	defer n.Unlock()
+	return n.stopped
+}
+
+func (n *Node) getState() NodeState {
+	n.Lock()
+	defer n.Unlock()
+	return n.NodeState
 }
 
 func (n *Node) incrIn() {

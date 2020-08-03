@@ -70,7 +70,7 @@ func (c *RouterContext) Run() {
 				fmt.Println("Stopping..")
 				for _, rn := range c.routesOrder {
 					r := c.routes[rn]
-					if !r.getFirstNode().stopped {
+					if !r.getFirstNode().getStopped() {
 						r.getFirstNode().Input <- Exchange{Type: Stop}
 					}
 				}
@@ -93,12 +93,10 @@ func (c *RouterContext) Print() {
 
 		fmt.Printf("Route: %s\n", rn)
 		fmt.Println("type          in     Stop err")
-		for _, n_ := range *r {
-			n_.Lock()
-			n := n_.NodeState
-			n_.Unlock()
+		for _, n := range *r {
+			s := n.getState()
 
-			fmt.Printf("└%-12s %-6d %v    %v\n", n_.typ.String(), n.in, boolToYN(n.stopped), n.err)
+			fmt.Printf("└%-12s %-6d %v    %v\n", n.typ.String(), s.in, boolToYN(s.stopped), s.err)
 		}
 	}
 }

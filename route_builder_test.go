@@ -12,7 +12,14 @@ type Probe struct {
 
 func (r *Probe) Run() {}
 
-func Test_Enrich(t *testing.T) {
+func TestEnrich(t *testing.T) {
+
+	for i := 0; i < 1000; i++ {
+		Enrich(t)
+	}
+}
+
+func Enrich(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	rc := NewRouterContext(ctx)
 
@@ -38,7 +45,7 @@ func Test_Enrich(t *testing.T) {
 		Process(1)
 
 	go func() {
-		time.Sleep(4 * time.Second)
+		time.Sleep(10 * time.Millisecond)
 		cancel()
 		rc.Print()
 	}()
