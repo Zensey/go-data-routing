@@ -4,7 +4,8 @@ Based on the concept of EIP (enterprise integration patterns) and go-pool-of-wor
 
 WIP
 
-#### Links
+#### Related libraries
+
 * https://github.com/chuntaojun/go-fork-join
 * https://github.com/Spatially/go-workgroup
 * https://github.com/Zensey/go-pool-of-workers
