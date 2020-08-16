@@ -20,35 +20,6 @@ const (
 	//enricher
 )
 
-/*
-	Main idea:
-	make a channel-based version to minimize memory usage
-	stream processing instead of read all into array & then process: decrease latency and mem. consumption
-
-
-	Architecture:
-
-    route-1: [->N]-[->N]-...-[->N]
-                   |
-                   -other route
-
-    Concerns / limitations:
-	- each given node is connected with the next (if one exists) only with 1 channel
-	- node owns Input channel
-	- Output is a reference to consumer's Input
-	- node does not close Output channel. Instead it sends msg type=close
-	- any given node especially "processor" should know if its Output is consumed. unconsumed channel blocks the producer
-
-
-	rt("bbb").process()
-	rt("aaa").source().to("bbb").split().sink()
-
-
-	TODO
-    - make poss. for a route to end with filter / processor
-
-*/
-
 type exchangeType int
 
 const (
