@@ -1,7 +1,9 @@
-#### Data routing engine
+# go-data-routing
 
-Based on the concept of EIP (enterprise integration patterns) and go-pool-of-workers
+The library provides a pipeline engine for stream processing of data.
+It is based on the concept of EIP (enterprise integration patterns).
 
+# Features
 The library provides the following primitives:
 - route (chain of nodes processing messages)
 - node:
@@ -12,15 +14,18 @@ The library provides the following primitives:
 
 All the primitives are accessible through DSL.
 
+## Examples:
+- a simplistic bfs crawler: `go run examples/crawler/main.go`
 
-Design of node:
+
+## Design of node:
 - each node is connected with the next one (if exists) only with 1 channel
 - node owns an _input_ channel
 - _output_ is just a reference to the _input_ of next node
 - node does not close the _output_ channel, instead it just sends a _Stop_ msg to a next node
 - if a node is the last in a chain than an output message being sent is discarded unless it's not a _RequestReply_
 
-Route builder DSL:
+## Route builder DSL:
 ```cgo
 type Route interface {
 	Source (f func(n *Node)) Route
@@ -32,11 +37,8 @@ type Route interface {
 }
 ```
 
-Examples:
-- a simplistic bfs crawler: `go run examples/crawler/main.go`
 
-
-#### Related links
+## Related links
 * https://github.com/zensey/go-pool-of-workers
 * https://github.com/chuntaojun/go-fork-join
 * https://github.com/spatially/go-workgroup
