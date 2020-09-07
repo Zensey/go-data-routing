@@ -1,5 +1,8 @@
 # go-data-routing
 
+![Test](https://github.com/Zensey/go-data-routing/workflows/Test/badge.svg?branch=dev)
+
+
 The library provides a pipeline engine for stream processing of data.
 It is based on the concept of EIP (enterprise integration patterns).
 

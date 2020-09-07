@@ -14,7 +14,7 @@ func (r *Probe) Run() {}
 
 func TestEnrich(t *testing.T) {
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		Enrich(t)
 	}
 }
@@ -51,6 +51,7 @@ func Enrich(t *testing.T) {
 	}()
 	rc.Run()
 	rc.Print()
+
 	// check that all nodes are stoped
 	for _, r := range rc.routes {
 		for _, n := range *r {
