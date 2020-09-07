@@ -20,6 +20,8 @@ type VisitorService struct {
 	prefix  string
 	host    string
 	visited map[string]State
+
+	out chan string
 }
 
 func NewVisitTrackerService() *VisitorService {
@@ -46,22 +48,25 @@ func (v *VisitorService) AddUrl(u string) {
 }
 
 func (v *VisitorService) DequeUrl() <-chan string {
-	out := make(chan string)
-	go func() {
-		for {
-			time.Sleep(1000 * time.Millisecond)
+	if v.out == nil {
+		v.out = make(chan string)
 
-			if len(v.urls) > 0 {
-				u := v.urls[0]
-				v.urls = v.urls[1:]
-				out <- u
-			} else {
-				close(out)
-				return
+		go func() {
+			for {
+				time.Sleep(1000 * time.Millisecond)
+
+				if len(v.urls) > 0 {
+					u := v.urls[0]
+					v.urls = v.urls[1:]
+					v.out <- u
+				} else {
+					close(v.out)
+					return
+				}
 			}
-		}
-	}()
-	return out
+		}()
+	}
+	return v.out
 }
 
 func (v *VisitorService) FilterNewUrls(uu []string, sourceDoc string) []string {
