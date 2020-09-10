@@ -1,0 +1,48 @@
+name: Test
+on: [push]
+env:
+  GO111MODULE: "on"
+
+jobs:
+  test:
+    name: Tests and Coverage
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Install Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.14
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    - name: Get dependencies
+      run: |
+        go get -d -v
+
+    - name: Run tests and calculate code coverage
+      run: |
+        out=$(go test ./... -coverprofile cover.out)
+        out="${out//'%'/'%25'}"
+        out="${out//$'\n'/'%0A'}"
+        out="${out//$'\r'/'%0D'}"
+        echo -e "::set-env name=COVER::$out"
+        go tool cover -html=cover.out -o coverage.html
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: coverage
+        path: coverage.html
+
+    - name: Comment
+      uses: mshick/add-pr-comment@v1
+      with:
+        message: |
+          **code coverage: **
+          ${{ env.COVER }}
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
+        allow-repeats: true # This is the default
