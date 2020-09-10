@@ -7,19 +7,24 @@ import (
 )
 
 type Probe struct {
-	X string
+	x string
 }
 
 func (r *Probe) Run() {}
 
 func TestEnrich(t *testing.T) {
 
+	// TestRaceCondition
 	for i := 0; i < 100; i++ {
-		Enrich(t)
+		Enrich(t, 1*time.Second, 10*time.Millisecond)
+	}
+	// TestNormalMode
+	for i := 0; i < 5; i++ {
+		Enrich(t, 100*time.Millisecond, 2*time.Second)
 	}
 }
 
-func Enrich(t *testing.T) {
+func Enrich(t *testing.T, sendMsgPeriod, cancelAfter time.Duration) {
 	ctx, cancel := context.WithCancel(context.Background())
 	rc := NewRouterContext(ctx)
 
@@ -31,7 +36,7 @@ func Enrich(t *testing.T) {
 					return
 				}
 
-			case <-time.After(1 * time.Second):
+			case <-time.After(sendMsgPeriod):
 				n.Send(Exchange{Msg: &Probe{"a"}})
 			}
 		}).
@@ -45,14 +50,14 @@ func Enrich(t *testing.T) {
 		Process(1)
 
 	go func() {
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(cancelAfter)
 		cancel()
 		rc.Print()
 	}()
 	rc.Run()
 	rc.Print()
 
-	// check that all nodes are stoped
+	// check all nodes are stopped by now
 	for _, r := range rc.routes {
 		for _, n := range *r {
 			if !n.stopped {
@@ -60,5 +65,4 @@ func Enrich(t *testing.T) {
 			}
 		}
 	}
-
 }

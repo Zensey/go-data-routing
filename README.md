@@ -42,6 +42,7 @@ type Route interface {
 
 
 ## Related links
+* [A Stream Processing API for Go](https://medium.com/@vladimirvivien/a-stream-processing-api-for-go-842676efe315)
 * https://github.com/zensey/go-pool-of-workers
 * https://github.com/chuntaojun/go-fork-join
 * https://github.com/spatially/go-workgroup
