@@ -1,5 +1,9 @@
 package go_data_routing
 
+import (
+	"sync"
+)
+
 type Nodes []*Node
 
 func (n *Nodes) getFirstNode() *Node {
@@ -7,24 +11,38 @@ func (n *Nodes) getFirstNode() *Node {
 }
 
 type Route struct {
-	rc *RouterContext
-	rt Nodes
+	rc    *RouterContext
+	nodes Nodes
+
+	wg sync.WaitGroup
 }
 
 func NewRouteBuilder(rc *RouterContext) *Route {
 	r := &Route{
-		rc: rc,
-		rt: make(Nodes, 0),
+		rc:    rc,
+		nodes: make(Nodes, 0),
 	}
 	return r
 }
 
+func (r *Route) grabReference() {
+	r.wg.Add(1)
+}
+
+func (r *Route) releaseReference() {
+	r.wg.Done()
+}
+
+func (r *Route) waitZeroReferences() {
+	r.wg.Wait()
+}
+
 func (r *Route) addNode(n *Node) {
-	r.rt = append(r.rt, n)
+	r.nodes = append(r.nodes, n)
 }
 
 func (r *Route) isFirstNode(n *Node) bool {
-	return r.rt[0] == n
+	return r.nodes[0] == n
 }
 
 func (r *Route) Source(f func(n *Node)) *Route {
@@ -45,6 +63,7 @@ func (r *Route) Filter(f func(j Exchange, n *Node)) *Route {
 				if i.Type == Stop {
 					return
 				}
+
 				n.incrIn()
 				f(i, n)
 			}
@@ -88,10 +107,16 @@ func (r *Route) Process(nWorkers int) *Route {
 
 func (r *Route) To(dst string) *Route {
 	n := newNode(to)
+
+	var dstRoute *Route
+	n.setup = func() {
+		dstRoute = r.rc.lookupRoute(dst)
+		dstRoute.grabReference()
+	}
 	n.runner = func() {
-		dstRoute := r.rc.lookupRoute(dst)
-		dstNode := dstRoute.getFirstNode()
-		countTo := 0
+		dstNode := dstRoute.nodes.getFirstNode()
+
+		countRequest := 0
 		isClosing := false
 
 		for {
@@ -99,15 +124,17 @@ func (r *Route) To(dst string) *Route {
 			case i, _ := <-n.Input:
 				if i.Type == Stop {
 					isClosing = true
-					if countTo == 0 {
+					if countRequest == 0 {
+						dstRoute.releaseReference()
 						return
 					}
 
 				} else {
 					// detect type
 					if i.Type == RequestReply && i.Initiator == n {
-						countTo--
-						if countTo == 0 && isClosing {
+						countRequest--
+						if countRequest == 0 && isClosing {
+							dstRoute.releaseReference()
 							return
 						}
 
@@ -118,7 +145,7 @@ func (r *Route) To(dst string) *Route {
 					} else {
 						n.incrIn()
 
-						countTo++
+						countRequest++
 						i_ := i
 						i_.Type = RequestReply
 						i_.Initiator = n
@@ -134,24 +161,32 @@ func (r *Route) To(dst string) *Route {
 
 func (r *Route) WireTap(dst string) *Route {
 	n := newNode(wiretap)
+
+	var dstRoute *Route
+	n.setup = func() {
+		dstRoute = r.rc.lookupRoute(dst)
+		dstRoute.grabReference()
+	}
 	n.runner = func() {
-		dstRoute := r.rc.lookupRoute(dst)
-		dstNode := dstRoute.getFirstNode()
+		dstNode := dstRoute.nodes.getFirstNode()
+
 		for {
 			select {
 			case i, _ := <-n.Input:
 				if i.Type == Stop {
+					dstRoute.releaseReference()
 					return
 				}
 
 				n.incrIn()
-				if !dstNode.stopped { // possible data race. trace route dependencies / exchanges ?
+				if !dstNode.stopped {
 					dstNode.Input <- i
 				}
 				n.Output <- i
 			}
 		}
 	}
+
 	r.addNode(n)
 	return r
 }
@@ -173,7 +208,8 @@ func (r *Route) Sink(f func(j Exchange) error) *Route {
 					return
 				}
 
-				if i.Type == RequestReply && i.Initiator != nil { // return to initiator
+				if i.Type == RequestReply && i.Initiator != nil {
+					// return to initiator
 					i.Initiator.Input <- i
 				}
 			}

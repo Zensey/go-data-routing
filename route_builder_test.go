@@ -52,14 +52,12 @@ func Enrich(t *testing.T, sendMsgPeriod, cancelAfter time.Duration) {
 	go func() {
 		time.Sleep(cancelAfter)
 		cancel()
-		rc.Print()
 	}()
 	rc.Run()
-	rc.Print()
 
 	// check all nodes are stopped by now
 	for _, r := range rc.routes {
-		for _, n := range *r {
+		for _, n := range r.nodes {
 			if !n.stopped {
 				t.Fail()
 			}

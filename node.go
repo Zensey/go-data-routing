@@ -53,6 +53,7 @@ type Node struct {
 	sync.Mutex
 	NodeState
 
+	setup  func()
 	runner func()
 }
 
@@ -93,6 +94,7 @@ func (n *Node) setErr(e error) {
 	n.err = e
 }
 
+// Send an exchange to a next node
 func (n *Node) Send(e Exchange) {
 	//fmt.Printf("Send> %v %+v\n", n.isLast, e)
 

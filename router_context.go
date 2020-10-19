@@ -10,14 +10,14 @@ import (
 type RouterContext struct {
 	routesWg    sync.WaitGroup
 	ctx         context.Context
-	routes      map[string]*Nodes
+	routes      map[string]*Route
 	routesOrder []string
 }
 
 func NewRouterContext(ctx context.Context) *RouterContext {
 	c := &RouterContext{
 		ctx:    ctx,
-		routes: make(map[string]*Nodes),
+		routes: make(map[string]*Route),
 	}
 	return c
 }
@@ -25,13 +25,13 @@ func NewRouterContext(ctx context.Context) *RouterContext {
 func (c *RouterContext) Route(name string) *Route {
 	c.routesWg.Add(1)
 	rb := NewRouteBuilder(c)
-	c.routes[name] = &rb.rt
+	c.routes[name] = rb
 	c.routesOrder = append(c.routesOrder, name)
 
 	return rb
 }
 
-func (c *RouterContext) lookupRoute(s string) *Nodes {
+func (c *RouterContext) lookupRoute(s string) *Route {
 	return c.routes[s]
 }
 
@@ -41,12 +41,16 @@ func (c *RouterContext) Run() {
 	// link nodes by channels
 	for _, rt := range c.routes {
 		prev := (*Node)(nil)
-		for i, n := range *rt {
+		for i, n := range rt.nodes {
+			if n.setup != nil {
+				n.setup()
+			}
+
 			if prev != nil {
 				prev.Output = n.Input
 			}
 			prev = n
-			if i == len(*rt)-1 {
+			if i == len(rt.nodes)-1 {
 				n.isLast = true
 			}
 		}
@@ -54,7 +58,7 @@ func (c *RouterContext) Run() {
 
 	// launch runners
 	for _, rt := range c.routes {
-		for _, n := range *rt {
+		for _, n := range rt.nodes {
 			go func(n *Node) {
 				n.runner()
 				c.onRunnerStop(n)
@@ -63,26 +67,28 @@ func (c *RouterContext) Run() {
 	}
 
 	go func() {
-		c.Print()
+		//c.Print()
 		for {
 			select {
 			case <-c.ctx.Done():
 				fmt.Println("Stopping..")
 				for _, rn := range c.routesOrder {
 					r := c.routes[rn]
-					if !r.getFirstNode().getStopped() {
-						r.getFirstNode().Input <- Exchange{Type: Stop}
+					r.waitZeroReferences()
+
+					if !r.nodes.getFirstNode().getStopped() {
+						r.nodes.getFirstNode().Input <- Exchange{Type: Stop}
 					}
 				}
 				return
 
-			case <-time.After(2 * time.Second):
+			case <-time.After(5 * time.Second):
 				c.Print()
 			}
 		}
 	}()
 
-	c.routesWg.Wait() // wait for all routes
+	c.routesWg.Wait() // wait for all routes to stop
 }
 
 func (c *RouterContext) Print() {
@@ -93,10 +99,10 @@ func (c *RouterContext) Print() {
 
 		fmt.Printf("Route: %s\n", rn)
 		fmt.Println("type          in     Stop err")
-		for _, n := range *r {
+		for _, n := range r.nodes {
 			s := n.getState()
 
-			fmt.Printf("└%-12s %-6d %v    %v\n", n.typ.String(), s.in, boolToYN(s.stopped), s.err)
+			fmt.Printf("└%-12s %-6d %v    %v  @ %p\n", n.typ.String(), s.in, boolToYN(s.stopped), s.err, n)
 		}
 	}
 }
