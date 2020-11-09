@@ -6,6 +6,8 @@
 The library provides a pipeline engine for stream processing of data.
 It is based on the concept of EIP (enterprise integration patterns).
 
+The motivation for this project is simple: to get an easy and clear way of coding ETL-like programs for parallel processing of data. In my case it was a BFS crawler tuned for extraction of specific metadata, (see a basic version in `example` folder). 
+
 # Features
 The library provides the following primitives:
 - route (chain of nodes processing messages)
