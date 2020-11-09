@@ -16,12 +16,14 @@ import (
 type PluggablePool struct {
 	workers     []Worker
 	idleWorkers chan Worker
-	wg          sync.WaitGroup
-	quit        chan bool
-	input       chan Exchange
-	results     chan Exchange
-	nWorkers    int
-	node        *Node
+
+	wg      sync.WaitGroup
+	quit    chan bool
+	input   chan Exchange
+	results chan Exchange
+
+	nWorkers int
+	node     *Node
 }
 
 func NewPluggablePool(nWorkers int, n *Node) *PluggablePool {
@@ -52,6 +54,7 @@ func (p *PluggablePool) WorkerDone() {
 func (p *PluggablePool) spawnWorker() {
 	p.wg.Add(1)
 	w := newWorker(p)
+	p.workers = append(p.workers, w)
 	go w.run()
 }
 

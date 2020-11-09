@@ -107,6 +107,7 @@ func (r *Route) Process(nWorkers int) *Route {
 
 func (r *Route) To(dst string) *Route {
 	n := newNode(to)
+	feedbackChan := make(chan Exchange, 1)
 
 	var dstRoute *Route
 	n.setup = func() {
@@ -115,44 +116,66 @@ func (r *Route) To(dst string) *Route {
 	}
 	n.runner = func() {
 		dstNode := dstRoute.nodes.getFirstNode()
-
 		countRequest := 0
 		isClosing := false
 
+		dstBuf := make(chan Exchange, 100)
+
 		for {
-			select {
-			case i, _ := <-n.Input:
-				if i.Type == Stop {
-					isClosing = true
-					if countRequest == 0 {
+			// 2 cases b/c of bufferisation (to ->dst) beeing used to prevent a deadlock
+
+			var i Exchange
+			if len(dstBuf) > 0 {
+				i_ := <-dstBuf
+
+				select {
+				case i, _ = <-feedbackChan:
+					dstBuf <- i_
+
+				case dstNode.Input <- i_:
+					continue
+				}
+			} else {
+				select {
+				case i, _ = <-n.Input:
+				case i, _ = <-feedbackChan:
+				}
+			}
+
+			if i.Type == Stop {
+				isClosing = true
+				if countRequest == 0 {
+					dstRoute.releaseReference()
+					return
+				}
+
+			} else {
+				// detect type
+				if i.Type == RequestReply && i.Initiator == n {
+
+					// pass down
+					i.Type = Request
+					i.Initiator = nil
+					n.Output <- i
+
+					countRequest--
+					if countRequest == 0 && isClosing {
 						dstRoute.releaseReference()
 						return
 					}
-
 				} else {
-					// detect type
-					if i.Type == RequestReply && i.Initiator == n {
-						countRequest--
-						if countRequest == 0 && isClosing {
-							dstRoute.releaseReference()
-							return
-						}
+					n.incrIn()
 
-						// pass down
-						i.Type = Request
-						i.Initiator = nil
-						n.Output <- i
-					} else {
-						n.incrIn()
+					countRequest++
+					i_ := i
+					i_.Type = RequestReply
+					i_.Initiator = n
+					i_.ReturnAddress = feedbackChan
 
-						countRequest++
-						i_ := i
-						i_.Type = RequestReply
-						i_.Initiator = n
-						dstNode.Input <- i_
-					}
+					dstBuf <- i_
 				}
 			}
+
 		}
 	}
 	r.addNode(n)
@@ -202,16 +225,13 @@ func (r *Route) Sink(f func(j Exchange) error) *Route {
 				}
 
 				n.incrIn()
-				err := f(i)
-				n.setErr(err)
-				if n.err != nil {
-					return
-				}
+				f(i)
 
 				if i.Type == RequestReply && i.Initiator != nil {
 					// return to initiator
-					i.Initiator.Input <- i
+					i.ReturnAddress <- i
 				}
+
 			}
 		}
 	}

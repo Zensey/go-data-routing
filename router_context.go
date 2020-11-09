@@ -98,11 +98,11 @@ func (c *RouterContext) Print() {
 		r := c.routes[rn]
 
 		fmt.Printf("Route: %s\n", rn)
-		fmt.Println("type          in     Stop err")
+		fmt.Println("type          in     Stop")
 		for _, n := range r.nodes {
 			s := n.getState()
 
-			fmt.Printf("└%-12s %-6d %v    %v  @ %p\n", n.typ.String(), s.in, boolToYN(s.stopped), s.err, n)
+			fmt.Printf("└%-12s %-6d %v      @ %p\n", n.typ.String(), s.in, boolToYN(s.stopped), n)
 		}
 	}
 }

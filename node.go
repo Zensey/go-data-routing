@@ -29,9 +29,10 @@ const (
 )
 
 type Exchange struct {
-	Type      exchangeType
-	Initiator *Node
-	//CorrID    string
+	Type          exchangeType
+	ReturnAddress chan Exchange
+	Initiator     *Node
+	//CorrID        string
 
 	Header interface{}
 	Msg    Job // both Input & result
@@ -40,7 +41,6 @@ type Exchange struct {
 type NodeState struct {
 	stopped bool
 	in      int
-	err     error // error of runner
 }
 
 type Node struct {
@@ -88,20 +88,14 @@ func (n *Node) incrIn() {
 	n.in++
 }
 
-func (n *Node) setErr(e error) {
-	n.Lock()
-	defer n.Unlock()
-	n.err = e
-}
-
 // Send an exchange to a next node
 func (n *Node) Send(e Exchange) {
-	//fmt.Printf("Send> %v %+v\n", n.isLast, e)
+	//fmt.Printf("Send> %v +v | req-rep: %v, %v %v\n", n.isLast, e.Type == RequestReply, e.Initiator != nil, n.isLast)
 
 	if n.isLast {
 		// return reply to the initiator of Request-Reply
 		if e.Type == RequestReply && e.Initiator != nil {
-			e.Initiator.Input <- e
+			e.ReturnAddress <- e
 		}
 		return
 	}
