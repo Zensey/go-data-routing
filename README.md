@@ -43,8 +43,15 @@ Sink| f func(e Exchange) error | Function f, used for consumption exchanges
 - if a node is the last in a chain than an output message being sent is discarded unless it's not a _RequestReply_
 
 ## Code coverage
-See the [coverage.html](coverage.html) for details.
-
+`make code-coverage` and see the coverage.html for details.
+```
+github.com/Zensey/go-data-routing/node.go (100.0%)
+github.com/Zensey/go-data-routing/nodetype_string.go (75.0%)
+github.com/Zensey/go-data-routing/pool.go (100.0%)
+github.com/Zensey/go-data-routing/route_builder.go (71.8%)
+github.com/Zensey/go-data-routing/router_context.go (100.0%)
+github.com/Zensey/go-data-routing/worker.go (81.8%)
+```
 
 ## Related links
 * [A Stream Processing API for Go](https://medium.com/@vladimirvivien/a-stream-processing-api-for-go-842676efe315)
