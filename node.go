@@ -32,7 +32,6 @@ type Exchange struct {
 	Type          exchangeType
 	ReturnAddress chan Exchange
 	Initiator     *Node
-	//CorrID        string
 
 	Header interface{}
 	Msg    Job // both Input & result

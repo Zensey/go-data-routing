@@ -42,7 +42,8 @@ Sink| f func(e Exchange) error | Function f, used for consumption exchanges
 - node does not close the _output_ channel, instead it just sends a _Stop_ msg to a next node
 - if a node is the last in a chain than an output message being sent is discarded unless it's not a _RequestReply_
 
-
+## Code coverage
+See the [coverage.html](coverage.html) for details.
 
 
 ## Related links

@@ -89,7 +89,7 @@ func (r *Route) Process(nWorkers int) *Route {
 				select {
 				case ex, _ := <-p.input:
 					if ex.Type == Stop {
-						// Consider : using cancel ctx to term long-running requests ?
+						// consider using cancel ctx to term long-running requests
 						p.joinWorkers()
 						return
 					} else {
@@ -109,73 +109,73 @@ func (r *Route) To(dst string) *Route {
 	n := newNode(to)
 	feedbackChan := make(chan Exchange, 1)
 
-	var dstRoute *Route
+	var destRoute *Route
 	n.setup = func() {
-		dstRoute = r.rc.lookupRoute(dst)
-		dstRoute.grabReference()
+		destRoute = r.rc.lookupRoute(dst)
+		destRoute.grabReference()
 	}
+
 	n.runner = func() {
-		dstNode := dstRoute.nodes.getFirstNode()
+		destNode := destRoute.nodes.getFirstNode()
 		countRequest := 0
 		isClosing := false
 
+		// buffer for exchanges being sent to the destination route
 		dstBuf := make(chan Exchange, 100)
-
 		for {
-			// 2 cases b/c of bufferisation (to ->dst) beeing used to prevent a deadlock
+			var in Exchange
 
-			var i Exchange
+			// 2 cases b/c of bufferisation (to ->dst) being used to prevent a deadlock situation
 			if len(dstBuf) > 0 {
-				i_ := <-dstBuf
+				dst := <-dstBuf
 
 				select {
-				case i, _ = <-feedbackChan:
-					dstBuf <- i_
+				case in, _ = <-feedbackChan:
+					dstBuf <- dst
 
-				case dstNode.Input <- i_:
+				case destNode.Input <- dst:
 					continue
 				}
 			} else {
 				select {
-				case i, _ = <-n.Input:
-				case i, _ = <-feedbackChan:
+				case in, _ = <-n.Input:
+				case in, _ = <-feedbackChan:
 				}
 			}
 
-			if i.Type == Stop {
+			if in.Type == Stop {
 				isClosing = true
 				if countRequest == 0 {
-					dstRoute.releaseReference()
+					destRoute.releaseReference()
 					return
 				}
 
 			} else {
 				// detect type
-				if i.Type == RequestReply && i.Initiator == n {
+				if in.Type == RequestReply && in.Initiator == n {
 
-					// pass down
-					i.Type = Request
-					i.Initiator = nil
-					n.Output <- i
+					// pass the exchange to the next node
+					in.Type = Request
+					in.Initiator = nil
+					n.Output <- in
 
 					countRequest--
 					if countRequest == 0 && isClosing {
-						dstRoute.releaseReference()
+						destRoute.releaseReference()
 						return
 					}
 				} else {
 					n.incrIn()
 
 					countRequest++
-					i_ := i
-					i_.Type = RequestReply
-					i_.Initiator = n
-					i_.ReturnAddress = feedbackChan
+					copy := in
+					copy.Type = RequestReply
+					copy.Initiator = n
+					copy.ReturnAddress = feedbackChan
 
-					dstBuf <- i_
+					dstBuf <- copy
 				}
 			}
-
 		}
 	}
 	r.addNode(n)

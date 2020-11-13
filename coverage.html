@@ -1,0 +1,829 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>util: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/Zensey/go-data-routing/examples/crawler/util/html_utils.go (61.5%)</option>
+				
+				<option value="file1">github.com/Zensey/go-data-routing/examples/crawler/util/shutdown.go (0.0%)</option>
+				
+				<option value="file2">github.com/Zensey/go-data-routing/node.go (100.0%)</option>
+				
+				<option value="file3">github.com/Zensey/go-data-routing/nodetype_string.go (75.0%)</option>
+				
+				<option value="file4">github.com/Zensey/go-data-routing/pool.go (100.0%)</option>
+				
+				<option value="file5">github.com/Zensey/go-data-routing/route_builder.go (71.8%)</option>
+				
+				<option value="file6">github.com/Zensey/go-data-routing/router_context.go (100.0%)</option>
+				
+				<option value="file7">github.com/Zensey/go-data-routing/worker.go (81.8%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package util
+
+import (
+        "net/url"
+        "strings"
+
+        "golang.org/x/net/html"
+)
+
+func GetFullUrl(docUrl, href string) (string, error) <span class="cov8" title="1">{
+        h, err := url.Parse(href)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">h.Fragment = ""
+
+        if h.IsAbs() </span><span class="cov8" title="1">{
+                return h.String(), nil
+        }</span>
+        <span class="cov8" title="1">doc, err := url.Parse(docUrl)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">doc.Fragment = ""
+        doc.RawQuery = ""
+        doc.Path = ""
+
+        if strings.HasPrefix(href, "//") </span><span class="cov8" title="1">{
+                doc.Host = ""
+                return doc.String() + h.String(), nil
+        }</span>
+
+        <span class="cov8" title="1">if !strings.HasPrefix(href, "/") </span><span class="cov8" title="1">{
+                h.Path = "/" + h.Path
+        }</span>
+        <span class="cov8" title="1">return doc.String() + h.RequestURI(), nil</span>
+}
+
+func GetHrefFromToken(t html.Token) string <span class="cov0" title="0">{
+        for _, a := range t.Attr </span><span class="cov0" title="0">{
+                if a.Key == "href" </span><span class="cov0" title="0">{
+                        return a.Val
+                }</span>
+        }
+        <span class="cov0" title="0">return ""</span>
+}
+
+func SplitFragment(s string) string <span class="cov0" title="0">{
+        i := strings.Index(s, "#")
+        if i &lt; 0 </span><span class="cov0" title="0">{
+                return s
+        }</span>
+        <span class="cov0" title="0">return s[:i]</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package util
+
+import (
+        "context"
+        "os"
+        "os/signal"
+)
+
+// Trap Ctrl+C and call cancel on the context
+func ShutdownCtx() (context.Context, func()) <span class="cov0" title="0">{
+        ctx, cancel := context.WithCancel(context.Background())
+        sigChan := make(chan os.Signal, 1)
+        signal.Notify(sigChan, os.Interrupt)
+
+        //defer func() {
+        //        signal.Stop(sigChan)
+        //        cancel()
+        //}()
+
+        go func() </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-sigChan:<span class="cov0" title="0">
+                        cancel()</span>
+                }
+        }()
+        <span class="cov0" title="0">return ctx, cancel</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package go_data_routing
+
+import (
+        "sync"
+)
+
+type nodeType int
+
+//go:generate stringer -type=nodeType
+const (
+        source nodeType = iota + 1
+        sink
+        filter
+        processor
+        to
+        wiretap
+        consumer
+
+        //aggregator
+        //enricher
+)
+
+type exchangeType int
+
+const (
+        Request exchangeType = iota + 1
+        RequestReply
+        Stop
+)
+
+type Exchange struct {
+        Type          exchangeType
+        ReturnAddress chan Exchange
+        Initiator     *Node
+
+        Header interface{}
+        Msg    Job // both Input &amp; result
+}
+
+type NodeState struct {
+        stopped bool
+        in      int
+}
+
+type Node struct {
+        typ    nodeType
+        isLast bool
+
+        Input  chan Exchange
+        Output chan Exchange
+
+        sync.Mutex
+        NodeState
+
+        setup  func()
+        runner func()
+}
+
+func newNode(t nodeType) *Node <span class="cov8" title="1">{
+        n := &amp;Node{typ: t}
+        n.Input = make(chan Exchange)
+
+        return n
+}</span>
+
+func (n *Node) onStop() <span class="cov8" title="1">{
+        n.Lock()
+        defer n.Unlock()
+        n.stopped = true
+}</span>
+
+func (n *Node) getStopped() bool <span class="cov8" title="1">{
+        n.Lock()
+        defer n.Unlock()
+        return n.stopped
+}</span>
+
+func (n *Node) getState() NodeState <span class="cov8" title="1">{
+        n.Lock()
+        defer n.Unlock()
+        return n.NodeState
+}</span>
+
+func (n *Node) incrIn() <span class="cov8" title="1">{
+        n.Lock()
+        defer n.Unlock()
+        n.in++
+}</span>
+
+// Send an exchange to a next node
+func (n *Node) Send(e Exchange) <span class="cov8" title="1">{
+        //fmt.Printf("Send&gt; %v +v | req-rep: %v, %v %v\n", n.isLast, e.Type == RequestReply, e.Initiator != nil, n.isLast)
+
+        if n.isLast </span><span class="cov8" title="1">{
+                // return reply to the initiator of Request-Reply
+                if e.Type == RequestReply &amp;&amp; e.Initiator != nil </span><span class="cov8" title="1">{
+                        e.ReturnAddress &lt;- e
+                }</span>
+                <span class="cov8" title="1">return</span>
+        }
+        <span class="cov8" title="1">n.Output &lt;- e</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Code generated by "stringer -type=nodeType"; DO NOT EDIT.
+
+package go_data_routing
+
+import "strconv"
+
+func _() {
+        // An "invalid array index" compiler error signifies that the constant values have changed.
+        // Re-run the stringer command to generate them again.
+        var x [1]struct{}
+        _ = x[source-1]
+        _ = x[sink-2]
+        _ = x[filter-3]
+        _ = x[processor-4]
+        _ = x[to-5]
+        _ = x[wiretap-6]
+        _ = x[consumer-7]
+}
+
+const _nodeType_name = "sourcesinkfilterprocessortowiretapconsumer"
+
+var _nodeType_index = [...]uint8{0, 6, 10, 16, 25, 27, 34, 42}
+
+func (i nodeType) String() string <span class="cov8" title="1">{
+        i -= 1
+        if i &lt; 0 || i &gt;= nodeType(len(_nodeType_index)-1) </span><span class="cov0" title="0">{
+                return "nodeType(" + strconv.FormatInt(int64(i+1), 10) + ")"
+        }</span>
+        <span class="cov8" title="1">return _nodeType_name[_nodeType_index[i]:_nodeType_index[i+1]]</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package go_data_routing
+
+import (
+        "sync"
+)
+
+/*
+ Logic of pool
+
+ 1. wait for an idle worker
+ 2. wait for an incoming job
+ 3. on chan. close Quit all workers gracefully
+
+*/
+
+type PluggablePool struct {
+        workers     []Worker
+        idleWorkers chan Worker
+
+        wg      sync.WaitGroup
+        quit    chan bool
+        input   chan Exchange
+        results chan Exchange
+
+        nWorkers int
+        node     *Node
+}
+
+func NewPluggablePool(nWorkers int, n *Node) *PluggablePool <span class="cov8" title="1">{
+        p := &amp;PluggablePool{
+                idleWorkers: make(chan Worker, 100),
+                wg:          sync.WaitGroup{},
+                quit:        make(chan bool),
+                //input:       make(chan Exchange),
+                nWorkers: nWorkers,
+                node:     n,
+        }
+
+        return p
+}</span>
+
+func (p *PluggablePool) Quit() chan bool <span class="cov8" title="1">{
+        return p.quit
+}</span>
+
+func (p *PluggablePool) IdleWorkers() chan Worker <span class="cov8" title="1">{
+        return p.idleWorkers
+}</span>
+
+func (p *PluggablePool) WorkerDone() <span class="cov8" title="1">{
+        p.wg.Done()
+}</span>
+
+func (p *PluggablePool) spawnWorker() <span class="cov8" title="1">{
+        p.wg.Add(1)
+        w := newWorker(p)
+        p.workers = append(p.workers, w)
+        go w.run()
+}</span>
+
+func (p *PluggablePool) joinWorkers() <span class="cov8" title="1">{
+        close(p.quit)
+        p.wg.Wait()
+}</span>
+
+func (p *PluggablePool) FuncOnJobResult(j Exchange) <span class="cov8" title="1">{
+        p.node.Send(j)
+}</span>
+
+func (p *PluggablePool) spawnWorkers() <span class="cov8" title="1">{
+        for i := 0; i &lt; p.nWorkers; i++ </span><span class="cov8" title="1">{
+                p.spawnWorker()
+        }</span>
+}
+
+func (p *PluggablePool) setInputChan(i chan Exchange) <span class="cov8" title="1">{
+        p.input = i
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package go_data_routing
+
+import (
+        "sync"
+)
+
+type Nodes []*Node
+
+func (n *Nodes) getFirstNode() *Node <span class="cov8" title="1">{
+        return (*n)[0]
+}</span>
+
+type Route struct {
+        rc    *RouterContext
+        nodes Nodes
+
+        wg sync.WaitGroup
+}
+
+func NewRouteBuilder(rc *RouterContext) *Route <span class="cov8" title="1">{
+        r := &amp;Route{
+                rc:    rc,
+                nodes: make(Nodes, 0),
+        }
+        return r
+}</span>
+
+func (r *Route) grabReference() <span class="cov8" title="1">{
+        r.wg.Add(1)
+}</span>
+
+func (r *Route) releaseReference() <span class="cov8" title="1">{
+        r.wg.Done()
+}</span>
+
+func (r *Route) waitZeroReferences() <span class="cov8" title="1">{
+        r.wg.Wait()
+}</span>
+
+func (r *Route) addNode(n *Node) <span class="cov8" title="1">{
+        r.nodes = append(r.nodes, n)
+}</span>
+
+func (r *Route) isFirstNode(n *Node) bool <span class="cov0" title="0">{
+        return r.nodes[0] == n
+}</span>
+
+func (r *Route) Source(f func(n *Node)) *Route <span class="cov8" title="1">{
+        n := newNode(source)
+        n.runner = func() </span><span class="cov8" title="1">{
+                f(n)
+        }</span>
+        <span class="cov8" title="1">r.addNode(n)
+        return r</span>
+}
+
+func (r *Route) Filter(f func(j Exchange, n *Node)) *Route <span class="cov0" title="0">{
+        n := newNode(filter)
+        n.runner = func() </span><span class="cov0" title="0">{
+                for </span><span class="cov0" title="0">{
+                        select </span>{
+                        case i, _ := &lt;-n.Input:<span class="cov0" title="0">
+                                if i.Type == Stop </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+
+                                <span class="cov0" title="0">n.incrIn()
+                                f(i, n)</span>
+                        }
+                }
+        }
+        <span class="cov0" title="0">r.addNode(n)
+        return r</span>
+}
+
+func (r *Route) Process(nWorkers int) *Route <span class="cov8" title="1">{
+        n := newNode(processor)
+        p := NewPluggablePool(nWorkers, n)
+        p.setInputChan(n.Input)
+
+        n.runner = func() </span><span class="cov8" title="1">{
+                p.spawnWorkers()
+
+                // exits from the cycle only when there's a spare worker and the job has been submitted to it
+                for </span><span class="cov8" title="1">{
+                l:
+                        select </span>{
+                        case w := &lt;-p.idleWorkers:<span class="cov8" title="1">
+                                select </span>{
+                                case ex, _ := &lt;-p.input:<span class="cov8" title="1">
+                                        if ex.Type == Stop </span><span class="cov8" title="1">{
+                                                // consider using cancel ctx to term long-running requests
+                                                p.joinWorkers()
+                                                return
+                                        }</span> else<span class="cov8" title="1"> {
+                                                n.incrIn()
+                                                w.SubmitJob(ex)
+                                                break l</span>
+                                        }
+                                }
+                        }
+                }
+        }
+        <span class="cov8" title="1">r.addNode(n)
+        return r</span>
+}
+
+func (r *Route) To(dst string) *Route <span class="cov8" title="1">{
+        n := newNode(to)
+        feedbackChan := make(chan Exchange, 1)
+
+        var destRoute *Route
+        n.setup = func() </span><span class="cov8" title="1">{
+                destRoute = r.rc.lookupRoute(dst)
+                destRoute.grabReference()
+        }</span>
+
+        <span class="cov8" title="1">n.runner = func() </span><span class="cov8" title="1">{
+                destNode := destRoute.nodes.getFirstNode()
+                countRequest := 0
+                isClosing := false
+
+                // buffer for exchanges being sent to the destination route
+                dstBuf := make(chan Exchange, 100)
+                for </span><span class="cov8" title="1">{
+                        var in Exchange
+
+                        // 2 cases b/c of bufferisation (to -&gt;dst) being used to prevent a deadlock situation
+                        if len(dstBuf) &gt; 0 </span><span class="cov8" title="1">{
+                                dst := &lt;-dstBuf
+
+                                select </span>{
+                                case in, _ = &lt;-feedbackChan:<span class="cov0" title="0">
+                                        dstBuf &lt;- dst</span>
+
+                                case destNode.Input &lt;- dst:<span class="cov8" title="1">
+                                        continue</span>
+                                }
+                        } else<span class="cov8" title="1"> {
+                                select </span>{
+                                case in, _ = &lt;-n.Input:<span class="cov8" title="1"></span>
+                                case in, _ = &lt;-feedbackChan:<span class="cov8" title="1"></span>
+                                }
+                        }
+
+                        <span class="cov8" title="1">if in.Type == Stop </span><span class="cov8" title="1">{
+                                isClosing = true
+                                if countRequest == 0 </span><span class="cov8" title="1">{
+                                        destRoute.releaseReference()
+                                        return
+                                }</span>
+
+                        } else<span class="cov8" title="1"> {
+                                // detect type
+                                if in.Type == RequestReply &amp;&amp; in.Initiator == n </span><span class="cov8" title="1">{
+
+                                        // pass the exchange to the next node
+                                        in.Type = Request
+                                        in.Initiator = nil
+                                        n.Output &lt;- in
+
+                                        countRequest--
+                                        if countRequest == 0 &amp;&amp; isClosing </span><span class="cov8" title="1">{
+                                                destRoute.releaseReference()
+                                                return
+                                        }</span>
+                                } else<span class="cov8" title="1"> {
+                                        n.incrIn()
+
+                                        countRequest++
+                                        copy := in
+                                        copy.Type = RequestReply
+                                        copy.Initiator = n
+                                        copy.ReturnAddress = feedbackChan
+
+                                        dstBuf &lt;- copy
+                                }</span>
+                        }
+                }
+        }
+        <span class="cov8" title="1">r.addNode(n)
+        return r</span>
+}
+
+func (r *Route) WireTap(dst string) *Route <span class="cov0" title="0">{
+        n := newNode(wiretap)
+
+        var dstRoute *Route
+        n.setup = func() </span><span class="cov0" title="0">{
+                dstRoute = r.rc.lookupRoute(dst)
+                dstRoute.grabReference()
+        }</span>
+        <span class="cov0" title="0">n.runner = func() </span><span class="cov0" title="0">{
+                dstNode := dstRoute.nodes.getFirstNode()
+
+                for </span><span class="cov0" title="0">{
+                        select </span>{
+                        case i, _ := &lt;-n.Input:<span class="cov0" title="0">
+                                if i.Type == Stop </span><span class="cov0" title="0">{
+                                        dstRoute.releaseReference()
+                                        return
+                                }</span>
+
+                                <span class="cov0" title="0">n.incrIn()
+                                if !dstNode.stopped </span><span class="cov0" title="0">{
+                                        dstNode.Input &lt;- i
+                                }</span>
+                                <span class="cov0" title="0">n.Output &lt;- i</span>
+                        }
+                }
+        }
+
+        <span class="cov0" title="0">r.addNode(n)
+        return r</span>
+}
+
+func (r *Route) Sink(f func(j Exchange) error) *Route <span class="cov8" title="1">{
+        n := newNode(sink)
+        n.runner = func() </span><span class="cov8" title="1">{
+                for </span><span class="cov8" title="1">{
+                        select </span>{
+                        case i, _ := &lt;-n.Input:<span class="cov8" title="1">
+                                if i.Type == Stop </span><span class="cov8" title="1">{
+                                        return
+                                }</span>
+
+                                <span class="cov8" title="1">n.incrIn()
+                                f(i)
+
+                                if i.Type == RequestReply &amp;&amp; i.Initiator != nil </span><span class="cov0" title="0">{
+                                        // return to initiator
+                                        i.ReturnAddress &lt;- i
+                                }</span>
+
+                        }
+                }
+        }
+        <span class="cov8" title="1">r.addNode(n)
+        return r</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package go_data_routing
+
+import (
+        "context"
+        "fmt"
+        "sync"
+        "time"
+)
+
+type RouterContext struct {
+        routesWg    sync.WaitGroup
+        ctx         context.Context
+        routes      map[string]*Route
+        routesOrder []string
+}
+
+func NewRouterContext(ctx context.Context) *RouterContext <span class="cov8" title="1">{
+        c := &amp;RouterContext{
+                ctx:    ctx,
+                routes: make(map[string]*Route),
+        }
+        return c
+}</span>
+
+func (c *RouterContext) Route(name string) *Route <span class="cov8" title="1">{
+        c.routesWg.Add(1)
+        rb := NewRouteBuilder(c)
+        c.routes[name] = rb
+        c.routesOrder = append(c.routesOrder, name)
+
+        return rb
+}</span>
+
+func (c *RouterContext) lookupRoute(s string) *Route <span class="cov8" title="1">{
+        return c.routes[s]
+}</span>
+
+func (c *RouterContext) Run() <span class="cov8" title="1">{
+        fmt.Println("RouterContext &gt; Run")
+
+        // link nodes by channels
+        for _, rt := range c.routes </span><span class="cov8" title="1">{
+                prev := (*Node)(nil)
+                for i, n := range rt.nodes </span><span class="cov8" title="1">{
+                        if n.setup != nil </span><span class="cov8" title="1">{
+                                n.setup()
+                        }</span>
+
+                        <span class="cov8" title="1">if prev != nil </span><span class="cov8" title="1">{
+                                prev.Output = n.Input
+                        }</span>
+                        <span class="cov8" title="1">prev = n
+                        if i == len(rt.nodes)-1 </span><span class="cov8" title="1">{
+                                n.isLast = true
+                        }</span>
+                }
+        }
+
+        // launch runners
+        <span class="cov8" title="1">for _, rt := range c.routes </span><span class="cov8" title="1">{
+                for _, n := range rt.nodes </span><span class="cov8" title="1">{
+                        go func(n *Node) </span><span class="cov8" title="1">{
+                                n.runner()
+                                c.onRunnerStop(n)
+                        }</span>(n)
+                }
+        }
+
+        <span class="cov8" title="1">go func() </span><span class="cov8" title="1">{
+                //c.Print()
+                for </span><span class="cov8" title="1">{
+                        select </span>{
+                        case &lt;-c.ctx.Done():<span class="cov8" title="1">
+                                fmt.Println("Stopping..")
+                                for _, rn := range c.routesOrder </span><span class="cov8" title="1">{
+                                        r := c.routes[rn]
+                                        r.waitZeroReferences()
+
+                                        if !r.nodes.getFirstNode().getStopped() </span><span class="cov8" title="1">{
+                                                r.nodes.getFirstNode().Input &lt;- Exchange{Type: Stop}
+                                        }</span>
+                                }
+                                <span class="cov8" title="1">return</span>
+
+                        case &lt;-time.After(5 * time.Second):<span class="cov8" title="1">
+                                c.Print()</span>
+                        }
+                }
+        }()
+
+        <span class="cov8" title="1">c.routesWg.Wait()</span> // wait for all routes to stop
+}
+
+func (c *RouterContext) Print() <span class="cov8" title="1">{
+        //fmt.Print("\033[H\033[2J") // clear screen
+
+        for _, rn := range c.routesOrder </span><span class="cov8" title="1">{
+                r := c.routes[rn]
+
+                fmt.Printf("Route: %s\n", rn)
+                fmt.Println("type          in     Stop")
+                for _, n := range r.nodes </span><span class="cov8" title="1">{
+                        s := n.getState()
+
+                        fmt.Printf("└%-12s %-6d %v      @ %p\n", n.typ.String(), s.in, boolToYN(s.stopped), n)
+                }</span>
+        }
+}
+
+func (c *RouterContext) onRunnerStop(n *Node) <span class="cov8" title="1">{
+        n.onStop()
+        if !n.isLast </span><span class="cov8" title="1">{
+                n.Send(Exchange{Type: Stop})
+                return
+        }</span>
+        // last node in a route
+        <span class="cov8" title="1">c.routesWg.Done()</span>
+}
+
+func boolToYN(b bool) string <span class="cov8" title="1">{
+        if b </span><span class="cov8" title="1">{
+                return "Y"
+        }</span>
+        <span class="cov8" title="1">return "N"</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package go_data_routing
+
+type worker struct {
+        pool    Pool
+        jobChan chan Exchange
+}
+
+func newWorker(p Pool) *worker <span class="cov8" title="1">{
+        return &amp;worker{
+                pool:    p,
+                jobChan: make(chan Exchange),
+        }
+}</span>
+
+// Used by user-s code to submit a task to a worker
+func (w *worker) SubmitJob(j Exchange) <span class="cov8" title="1">{
+        w.jobChan &lt;- j
+}</span>
+
+// Used by pool to spawn a worker
+func (w *worker) run() <span class="cov8" title="1">{
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case w.pool.IdleWorkers() &lt;- w:<span class="cov8" title="1"></span>
+
+                case &lt;-w.pool.Quit():<span class="cov0" title="0">
+                        w.pool.WorkerDone()
+                        return</span>
+                }
+
+                <span class="cov8" title="1">select </span>{
+                case job := &lt;-w.jobChan:<span class="cov8" title="1">
+                        job.Msg.Run()
+                        w.pool.FuncOnJobResult(job)</span>
+
+                case &lt;-w.pool.Quit():<span class="cov8" title="1">
+                        w.pool.WorkerDone()
+                        return</span>
+                }
+        }
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
